@@ -2,7 +2,7 @@ section .text
     global _start
 
 _start:
-    push 0x01
+    push 1234567q
 
 
     mov rsi, original_str   ; original str address
@@ -57,6 +57,7 @@ print_str:
 ;Entry: al = specifier symbol
 ;       rdi --> place to print
 ;       rdx = symbol to print
+;Exit: number prited in str_copy
 ;-------------------------------------------------
 specifier_handler:
     cmp al, 'c'
@@ -78,6 +79,8 @@ hexadecimal:
     jmp specifier_handler_end
 binar:
 octal:
+    call oct_to_str
+    jmp specifier_handler_end
 
 specifier_handler_end:
     ret
@@ -85,7 +88,7 @@ specifier_handler_end:
 ;Tranform number to hex str
 ;Entry: rdx  = number
 ;       rdi --> place to write
-;Exit: no exit
+;Exit: hex number printed in str copy
 ;Destr: rax, rcx
 ;-------------------------------------------------
 hex_to_str:
@@ -100,17 +103,17 @@ hex_to_str:
     xor rcx, rcx
 
     test rax, rax
-    jnz count_digits
+    jnz hex_count_digits
     mov cl, 1               ; if zero need one number
-    jmp print_prepare
+    jmp hex_print_prepare
 
-count_digits:
+hex_count_digits:
     inc cl                  ; cl++
     shr rax, 4              ; rax /= 16
     test rax, rax
-    jnz count_digits
+    jnz hex_count_digits
 
-print_prepare:
+hex_print_prepare:
     add rdi, rcx
     dec rdi
     push rcx                    ;save rcx in stack
@@ -130,9 +133,57 @@ print_hex:
     add rdi, rcx
 
     ret
+;-------------------------------------------------
+;Tranform number to oct str
+;Entry: rdx  = number
+;       rdi --> place to write
+;Exit: oct number printed in str copy
+;Destr: rax, rcx
+;-------------------------------------------------
+oct_to_str:
+    push rdi
 
+    mov byte [rdi], '0'
+    inc rdi
+    mov byte [rdi], 'o'
+    inc rdi
+
+    mov rax, rdx
+    xor rcx, rcx
+
+    test rax, rax
+    jnz oct_count_digits
+    mov cl, 1               ; if zero need one number
+    jmp oct_print_prepare
+
+oct_count_digits:
+    inc cl                  ; cl++
+    shr rax, 3              ; rax /= 8
+    test rax, rax
+    jnz oct_count_digits
+
+oct_print_prepare:
+    add rdi, rcx
+    dec rdi
+    push rcx                    ;save rcx in stack
+
+print_oct:
+    mov rax, rdx
+    and rax, 7q                ;last symbol
+    mov bl, [numbers+rax]
+    mov [rdi], bl
+    dec rdi
+    shr rdx, 3
+    loop print_oct
+
+    pop rcx
+    pop rdi
+    add rdi, 2
+    add rdi, rcx
+
+    ret
 
 section .data
-    original_str db 'Hello, %x World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
+    original_str db 'Hello, %o World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
     str_copy     times 64 db 0                ; буфер для копии строки (64 байта)
     numbers      db '0123456789abcdef'
