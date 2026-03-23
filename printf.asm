@@ -2,6 +2,7 @@ section .text
     global _start
 
 _start:
+    push 127523
     push str_const
     push 0b10101011111
     push '2'
@@ -72,6 +73,8 @@ specifier_handler:
     je binar
     cmp al, 'o'
     je octal
+    cmp al, 'd'
+    je decimal
     cmp al, 's'
     je string
 
@@ -88,6 +91,9 @@ binar:
     jmp specifier_handler_end
 octal:
     call oct_to_str
+    jmp specifier_handler_end
+decimal:
+    call dec_to_str
     jmp specifier_handler_end
 string:
     call str_to_str
@@ -244,6 +250,37 @@ print_bin:
 
     ret
 ;-------------------------------------------------
+;Tranform number to dec str
+;Entry: rdx  = number
+;       rdi --> place to write
+;Exit: dec number printed in str copy
+;Destr: rax, rcx
+;-------------------------------------------------
+dec_to_str:
+    mov rax, rdx
+    xor rcx, rcx                ;rcx = 0
+
+    mov cl, 0                   ;counter
+
+dec_count_digits:
+    inc cl                      ; cl++
+    xor rdx, rdx
+    mov rbx, 10
+    div rbx
+    push rdx
+    test rax, rax
+    jnz dec_count_digits
+
+
+print_dec:
+    pop rax
+    add al, '0'
+    mov[rdi], al
+    inc rdi                     ;rdi++
+    loop print_dec
+
+    ret
+;-------------------------------------------------
 ;Copy string constant to str
 ;Entry: rdx  = str offser
 ;       rdi --> place to write
@@ -263,7 +300,7 @@ end_of_str:
     ret
 
 section .data
-    original_str db 'Hello, %o %x %c %b %s World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
+    original_str db 'Hello, %o %x %c %b %s %d World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
     str_copy     times 256 db 0                ; буфер для копии строки (64 байта)
     numbers      db '0123456789abcdef'
     str_const    db 'FOR THE EMPEROR!!!', 0, 0ah
