@@ -2,7 +2,11 @@ section .text
     global _start
 
 _start:
-    push 1234567q
+    push str_const
+    push 0b10101011111
+    push '2'
+    push 0xabcdef
+    push 1234567o           ;push arguements
 
 
     mov rsi, original_str   ; original str address
@@ -68,6 +72,8 @@ specifier_handler:
     je binar
     cmp al, 'o'
     je octal
+    cmp al, 's'
+    je string
 
 
 char:
@@ -78,8 +84,13 @@ hexadecimal:
     call hex_to_str
     jmp specifier_handler_end
 binar:
+    call bin_to_str
+    jmp specifier_handler_end
 octal:
     call oct_to_str
+    jmp specifier_handler_end
+string:
+    call str_to_str
     jmp specifier_handler_end
 
 specifier_handler_end:
@@ -97,40 +108,40 @@ hex_to_str:
     mov byte [rdi], '0'
     inc rdi
     mov byte [rdi], 'x'
-    inc rdi
+    inc rdi                     ;0x at the begin
 
-    mov rax, rdx
-    xor rcx, rcx
+    mov rax, rdx                ;save number
+    xor rcx, rcx                ;rcx - counter
 
     test rax, rax
-    jnz hex_count_digits
-    mov cl, 1               ; if zero need one number
+    jnz hex_count_digits        ; if not zero
+    mov cl, 1                   ; if zero need one number
     jmp hex_print_prepare
 
 hex_count_digits:
-    inc cl                  ; cl++
-    shr rax, 4              ; rax /= 16
+    inc cl                      ; cl++
+    shr rax, 4                  ; rax /= 16
     test rax, rax
     jnz hex_count_digits
 
 hex_print_prepare:
     add rdi, rcx
-    dec rdi
+    dec rdi                     ;end of number
     push rcx                    ;save rcx in stack
 
 print_hex:
     mov rax, rdx
     and rax, 0xf                ;last symbol
-    mov bl, [numbers+rax]
-    mov [rdi], bl
-    dec rdi
+    mov bl, [numbers+rax]       ;symbol in bx
+    mov [rdi], bl               ;symbol in str
+    dec rdi                     ;rdi--
     shr rdx, 4
     loop print_hex
 
     pop rcx
     pop rdi
     add rdi, 2
-    add rdi, rcx
+    add rdi, rcx                ;rdi to the correct place
 
     ret
 ;-------------------------------------------------
@@ -141,37 +152,37 @@ print_hex:
 ;Destr: rax, rcx
 ;-------------------------------------------------
 oct_to_str:
-    push rdi
+    push rdi                    ;save rdi
 
     mov byte [rdi], '0'
     inc rdi
     mov byte [rdi], 'o'
-    inc rdi
+    inc rdi                     ;0o at the begin
 
     mov rax, rdx
-    xor rcx, rcx
+    xor rcx, rcx                ;rcx = 0
 
     test rax, rax
-    jnz oct_count_digits
-    mov cl, 1               ; if zero need one number
+    jnz oct_count_digits        ; if not zero
+    mov cl, 1                   ; if zero need one number
     jmp oct_print_prepare
 
 oct_count_digits:
-    inc cl                  ; cl++
-    shr rax, 3              ; rax /= 8
+    inc cl                      ; cl++
+    shr rax, 3                  ; rax /= 8
     test rax, rax
     jnz oct_count_digits
 
 oct_print_prepare:
     add rdi, rcx
-    dec rdi
+    dec rdi                     ;end of number in rdi
     push rcx                    ;save rcx in stack
 
 print_oct:
     mov rax, rdx
-    and rax, 7q                ;last symbol
-    mov bl, [numbers+rax]
-    mov [rdi], bl
+    and rax, 7                  ;last symbol
+    mov bl, [numbers+rax]       ;symbol in bl
+    mov [rdi], bl               ;symbol in str
     dec rdi
     shr rdx, 3
     loop print_oct
@@ -179,11 +190,80 @@ print_oct:
     pop rcx
     pop rdi
     add rdi, 2
+    add rdi, rcx                ;correct address in rdi
+
+    ret
+
+;-------------------------------------------------
+;Tranform number to bin str
+;Entry: rdx  = number
+;       rdi --> place to write
+;Exit: bin number printed in str copy
+;Destr: rax, rcx
+;-------------------------------------------------
+bin_to_str:
+    push rdi                    ;save rdi
+
+    mov byte [rdi], '0'
+    inc rdi
+    mov byte [rdi], 'b'
+    inc rdi                     ;0b at begin
+
+    mov rax, rdx
+    xor rcx, rcx                ;rcx = 0
+
+    test rax, rax
+    jnz bin_count_digits        ; if not zero
+    mov cl, 1                   ; if zero need one number
+    jmp bin_print_prepare
+
+bin_count_digits:
+    inc cl                      ; cl++
+    shr rax, 1                  ; rax /= 8
+    test rax, rax
+    jnz bin_count_digits
+
+bin_print_prepare:
     add rdi, rcx
+    dec rdi                     ;end of number
+    push rcx                    ;save rcx in stack
+
+print_bin:
+    mov rax, rdx
+    and rax, 0b1                ;last symbol
+    mov bl, [numbers+rax]       ;symbol in bl
+    mov [rdi], bl               ;symbol in str
+    dec rdi
+    shr rdx, 1
+    loop print_bin
+
+    pop rcx
+    pop rdi
+    add rdi, 2
+    add rdi, rcx                ;correct address
+
+    ret
+;-------------------------------------------------
+;Copy string constant to str
+;Entry: rdx  = str offser
+;       rdi --> place to write
+;Exit: hex number printed in str copy
+;Destr: rax, rcx
+;-------------------------------------------------
+str_to_str:
+    mov cl, [rdx]
+    test cl, cl                 ;if '\0' - finish
+    jz end_of_str
+    mov [rdi], cl               ;copy one symbol
+    inc rdi
+    inc rdx                     ;new symbol
+    jmp str_to_str
+end_of_str:
 
     ret
 
 section .data
-    original_str db 'Hello, %o World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
-    str_copy     times 64 db 0                ; буфер для копии строки (64 байта)
+    original_str db 'Hello, %o %x %c %b %s World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
+    str_copy     times 256 db 0                ; буфер для копии строки (64 байта)
     numbers      db '0123456789abcdef'
+    str_const    db 'FOR THE EMPEROR!!!', 0, 0ah
