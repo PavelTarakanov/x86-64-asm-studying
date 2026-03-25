@@ -77,7 +77,7 @@ specifier_handler:
     je decimal
     cmp al, 's'
     je string
-
+    jmp error_end
 
 char:
     mov [rdi], dl
@@ -298,9 +298,35 @@ str_to_str:
 end_of_str:
 
     ret
+;-------------------------------------------------
+;Error end of programm
+;-------------------------------------------------
+error_end:
+    mov rax, 1              ; syscall number
+    mov rdi, 1              ; stdout
+    mov rdx, [error_str_len]; str len
+    mov rsi, error_str       ; copy address
+    syscall                 ; print str
+
+    mov rax, 60
+    xor rdi, rdi            ; return 0
+    syscall                 ; end  of programm
+
+    ret
+;-------------------------------------------------
 
 section .data
-    original_str db 'Hello, %o %x %c %b %s %d World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
+    original_str db 'Hello, %a %x %c %b %s %d World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
     str_copy     times 256 db 0                ; буфер для копии строки (64 байта)
     numbers      db '0123456789abcdef'
     str_const    db 'FOR THE EMPEROR!!!', 0, 0ah
+    error_str    db '     ###     ', 0ah,
+                 db '    #####    ', 0ah,
+                 db '    #####    ', 0ah,
+                 db '    #####    ', 0ah,
+                 db '    #####    ', 0ah,
+                 db '    #####    ', 0ah,
+                 db ' ## ##### ## ', 0ah,
+                 db '#############', 0ah,
+                 db ' ###     ### ', 0ah, 0
+    error_str_len db error_str_len - error_str
