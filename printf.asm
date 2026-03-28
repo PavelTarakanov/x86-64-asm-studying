@@ -14,6 +14,7 @@ _start:
     mov rdi, str_copy       ; copy address
 
 copy_str:
+    xor al, al
     mov al, [rsi]           ; symbol in al
 
     cmp al, '%'
@@ -65,19 +66,8 @@ print_str:
 ;Exit: number prited in str_copy
 ;-------------------------------------------------
 specifier_handler:
-    cmp al, 'c'
-    je char
-    cmp al, 'x'
-    je hexadecimal
-    cmp al, 'b'
-    je binar
-    cmp al, 'o'
-    je octal
-    cmp al, 'd'
-    je decimal
-    cmp al, 's'
-    je string
-    jmp error_end
+    lea rbx, [jmp_table]
+    jmp [rbx + rax * 8]
 
 char:
     mov [rdi], dl
@@ -316,17 +306,29 @@ error_end:
 ;-------------------------------------------------
 
 section .data
-    original_str db 'Hello, %a %x %c %b %s %d World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
+    original_str db 'Hello, %o %x %c %b %s %d World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
     str_copy     times 256 db 0                ; буфер для копии строки (64 байта)
     numbers      db '0123456789abcdef'
-    str_const    db 'FOR THE EMPEROR!!!', 0, 0ah
-    error_str    db '     ###     ', 0ah,
-                 db '    #####    ', 0ah,
-                 db '    #####    ', 0ah,
-                 db '    #####    ', 0ah,
-                 db '    #####    ', 0ah,
-                 db '    #####    ', 0ah,
-                 db ' ## ##### ## ', 0ah,
-                 db '#############', 0ah,
-                 db ' ###     ### ', 0ah, 0
+    str_const    db 'FOR THE EMPEROR!!!', 0, 0xa
+    jmp_table   times 'b' dq error_end
+                dq binar
+                dq char
+                dq decimal
+                times ('o' - 'd' - 1) dq error_end
+                dq octal
+                times ('s' - 'o' - 1) dq error_end
+                dq string
+                times ('x' - 's' - 1) dq error_end
+                dq hexadecimal
+                times (128 - 'x') dq error_end
+    error_str    db '     ###     ', 0xa,
+                 db '    #####    ', 0xa,
+                 db '    #####    ', 0xa,
+                 db '    #####    ', 0xa,
+                 db '    #####    ', 0xa,
+                 db '    #####    ', 0xa,
+                 db ' ## ##### ## ', 0xa,
+                 db '#############', 0xa,
+                 db ' ###     ### ', 0xa, 0
     error_str_len db error_str_len - error_str
+
