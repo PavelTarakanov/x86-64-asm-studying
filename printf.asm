@@ -1,16 +1,18 @@
 section .text
-    global _start
 
-_start:
-    push 127523
-    push str_const
-    push 0b10101011111
-    push '2'
-    push 0xabcdef
-    push 1234567o           ;push arguements
+global my_print
+
+my_print:
+    mov [stack_address], rsp
+    pop r15
+    push r9
+    push r8
+    push rcx
+    push rdx
+    push rsi
 
 
-    mov rsi, original_str   ; original str address
+    mov rsi, rdi            ; original str address
     mov rdi, str_copy       ; copy address
 
 copy_str:
@@ -55,9 +57,9 @@ print_str:
     mov rdx, rcx            ; str len
     syscall                 ; print str
 
-    mov rax, 60
-    xor rdi, rdi            ; return 0
-    syscall                 ; end  of programm
+    mov rsp, [stack_address]
+    push r15
+    ret
 ;-------------------------------------------------
 ;Prints number as str in specifier type
 ;Entry: al = specifier symbol
@@ -306,7 +308,7 @@ error_end:
 ;-------------------------------------------------
 
 section .data
-    original_str db 'Hello, %o %x %c %b %s %d World!', 0xa, 0   ; исходная строка с символом новой строки и нулевым терминатором
+    stack_address dq 0
     str_copy     times 256 db 0                ; буфер для копии строки (64 байта)
     numbers      db '0123456789abcdef'
     str_const    db 'FOR THE EMPEROR!!!', 0, 0xa
@@ -332,3 +334,4 @@ section .data
                  db ' ###     ### ', 0xa, 0
     error_str_len db error_str_len - error_str
 
+section .note.GNU-stack noalloc noexec nowrite progbits
