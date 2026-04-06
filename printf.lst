@@ -26,333 +26,365 @@
     25                                  
     26 00000029 8A06                        mov al, [rsi]           ;specifier in al
     27 0000002B 5A                          pop rdx                 ;number in rdx
-    28 0000002C E84E000000                  call specifier_handler
-    29 00000031 EB05                        jmp if_end
+    28 0000002C E838000000                  call specifier_handler
+    29 00000031 EB1D                        jmp if_end
     30                                  
     31                                  common_symbol:
     32 00000033 8807                        mov [rdi], al           ; copy one symbol
     33 00000035 48FFC7                      inc rdi                 ; rdi++
     34                                  
-    35                                  if_end:
-    36 00000038 84C0                        test al, al             ; if '\0'
-    37 0000003A 7405                        jz copy_done
-    38                                  
-    39 0000003C 48FFC6                      inc rsi                 ; rsi++
-    40 0000003F EBDD                        jmp copy_str
-    41                                  
-    42                                  copy_done:
-    43 00000041 48BE-                       mov rsi, str_copy       ; copy address
-    43 00000043 [0800000000000000] 
-    44 0000004B 48BF-                       mov rdi, str_copy       ; copy begin(to cmp symbol abd '\0')
-    44 0000004D [0800000000000000] 
-    45 00000055 4831C9                      xor rcx, rcx            ; len counter
-    46                                  
-    47                                  len_calculate:
-    48 00000058 803F00                      cmp byte [rdi], 0       ; if '\0'
-    49 0000005B 7408                        je print_str
-    50 0000005D 48FFC1                      inc rcx                 ; len counter++
-    51 00000060 48FFC7                      inc rdi                 ; next symabol
-    52 00000063 EBF3                        jmp len_calculate
-    53                                  
-    54                                  print_str:
-    55 00000065 B801000000                  mov rax, 1              ; syscall number
-    56 0000006A BF01000000                  mov rdi, 1              ; stdout
-    57 0000006F 4889CA                      mov rdx, rcx            ; str len
-    58 00000072 0F05                        syscall                 ; print str
-    59                                  
-    60 00000074 488B2425[00000000]          mov rsp, [stack_address]
-    61 0000007C 4157                        push r15
-    62 0000007E C3                          ret
-    63                                  ;-------------------------------------------------
-    64                                  ;Prints number as str in specifier type
-    65                                  ;Entry: al = specifier symbol
-    66                                  ;       rdi --> place to print
-    67                                  ;       rdx = symbol to print
-    68                                  ;Exit: number prited in str_copy
-    69                                  ;-------------------------------------------------
-    70                                  specifier_handler:
-    71 0000007F 488D1C25[2C010000]          lea rbx, [jmp_table]
-    72 00000087 FF24C3                      jmp [rbx + rax * 8]
-    73                                  
-    74                                  char:
-    75 0000008A 8817                        mov [rdi], dl
-    76 0000008C 48FFC7                      inc rdi
-    77 0000008F EB23                        jmp specifier_handler_end
-    78                                  hexadecimal:
-    79 00000091 E81F000000                  call hex_to_str
-    80 00000096 EB1C                        jmp specifier_handler_end
-    81                                  binar:
-    82 00000098 E8B8000000                  call bin_to_str
-    83 0000009D EB15                        jmp specifier_handler_end
-    84                                  octal:
-    85 0000009F E861000000                  call oct_to_str
-    86 000000A4 EB0E                        jmp specifier_handler_end
-    87                                  decimal:
-    88 000000A6 E8F8000000                  call dec_to_str
-    89 000000AB EB07                        jmp specifier_handler_end
-    90                                  string:
-    91 000000AD E817010000                  call str_to_str
-    92 000000B2 EB00                        jmp specifier_handler_end
-    93                                  
-    94                                  specifier_handler_end:
-    95 000000B4 C3                          ret
-    96                                  ;-------------------------------------------------
-    97                                  ;Tranform number to hex str
-    98                                  ;Entry: rdx  = number
-    99                                  ;       rdi --> place to write
-   100                                  ;Exit: hex number printed in str copy
-   101                                  ;Destr: rax, rcx
-   102                                  ;-------------------------------------------------
-   103                                  hex_to_str:
-   104 000000B5 57                          push rdi
-   105                                  
-   106 000000B6 C60730                      mov byte [rdi], '0'
-   107 000000B9 48FFC7                      inc rdi
-   108 000000BC C60778                      mov byte [rdi], 'x'
-   109 000000BF 48FFC7                      inc rdi                     ;0x at the begin
-   110                                  
-   111 000000C2 4889D0                      mov rax, rdx                ;save number
-   112 000000C5 4831C9                      xor rcx, rcx                ;rcx - counter
-   113                                  
-   114 000000C8 4885C0                      test rax, rax
-   115 000000CB 7504                        jnz hex_count_digits        ; if not zero
-   116 000000CD B101                        mov cl, 1                   ; if zero need one number
-   117 000000CF EB0B                        jmp hex_print_prepare
-   118                                  
-   119                                  hex_count_digits:
-   120 000000D1 FEC1                        inc cl                      ; cl++
-   121 000000D3 48C1E804                    shr rax, 4                  ; rax /= 16
-   122 000000D7 4885C0                      test rax, rax
-   123 000000DA 75F5                        jnz hex_count_digits
-   124                                  
-   125                                  hex_print_prepare:
-   126 000000DC 4801CF                      add rdi, rcx
-   127 000000DF 48FFCF                      dec rdi                     ;end of number
-   128 000000E2 51                          push rcx                    ;save rcx in stack
+    35 00000038 4881FF[C6000000]            cmp rdi, (str_copy + 256 - 66)
+    36 0000003F 720F                        jb if_end
+    37                                  
+    38 00000041 E87E010000                  call print_and_free_buffer
+    39 00000046 48BF-                       mov rdi, str_copy
+    39 00000048 [0800000000000000] 
+    40                                  
+    41                                  if_end:
+    42 00000050 84C0                        test al, al             ; if '\0'
+    43 00000052 7405                        jz copy_done
+    44                                  
+    45 00000054 48FFC6                      inc rsi                 ; rsi++
+    46 00000057 EBC5                        jmp copy_str
+    47                                  
+    48                                  copy_done:
+    49 00000059 E866010000                  call print_and_free_buffer
+    50                                  
+    51 0000005E 488B2425[00000000]          mov rsp, [stack_address]
+    52 00000066 4157                        push r15
+    53 00000068 C3                          ret
+    54                                  ;-------------------------------------------------
+    55                                  ;Prints number as str in specifier type
+    56                                  ;Entry: al = specifier symbol
+    57                                  ;       rdi --> place to print
+    58                                  ;       rdx = symbol to print
+    59                                  ;Exit: number prited in str_copy
+    60                                  ;-------------------------------------------------
+    61                                  specifier_handler:
+    62 00000069 488D1C25[2C010000]          lea rbx, [jmp_table]
+    63 00000071 FF24C3                      jmp [rbx + rax * 8]
+    64                                  
+    65                                  char:
+    66 00000074 8817                        mov [rdi], dl
+    67 00000076 48FFC7                      inc rdi
+    68 00000079 EB23                        jmp specifier_handler_end
+    69                                  hexadecimal:
+    70 0000007B E81F000000                  call hex_to_str
+    71 00000080 EB1C                        jmp specifier_handler_end
+    72                                  binar:
+    73 00000082 E8B8000000                  call bin_to_str
+    74 00000087 EB15                        jmp specifier_handler_end
+    75                                  octal:
+    76 00000089 E861000000                  call oct_to_str
+    77 0000008E EB0E                        jmp specifier_handler_end
+    78                                  decimal:
+    79 00000090 E8F8000000                  call dec_to_str
+    80 00000095 EB07                        jmp specifier_handler_end
+    81                                  string:
+    82 00000097 E817010000                  call str_to_str
+    83 0000009C EB00                        jmp specifier_handler_end
+    84                                  
+    85                                  specifier_handler_end:
+    86 0000009E C3                          ret
+    87                                  ;-------------------------------------------------
+    88                                  ;Tranform number to hex str
+    89                                  ;Entry: rdx  = number
+    90                                  ;       rdi --> place to write
+    91                                  ;Exit: hex number printed in str copy
+    92                                  ;Destr: rax, rcx
+    93                                  ;-------------------------------------------------
+    94                                  hex_to_str:
+    95 0000009F 57                          push rdi
+    96                                  
+    97 000000A0 C60730                      mov byte [rdi], '0'
+    98 000000A3 48FFC7                      inc rdi
+    99 000000A6 C60778                      mov byte [rdi], 'x'
+   100 000000A9 48FFC7                      inc rdi                     ;0x at the begin
+   101                                  
+   102 000000AC 4889D0                      mov rax, rdx                ;save number
+   103 000000AF 4831C9                      xor rcx, rcx                ;rcx - counter
+   104                                  
+   105 000000B2 4885C0                      test rax, rax
+   106 000000B5 7504                        jnz hex_count_digits        ; if not zero
+   107 000000B7 B101                        mov cl, 1                   ; if zero need one number
+   108 000000B9 EB0B                        jmp hex_print_prepare
+   109                                  
+   110                                  hex_count_digits:
+   111 000000BB FEC1                        inc cl                      ; cl++
+   112 000000BD 48C1E804                    shr rax, 4                  ; rax /= 16
+   113 000000C1 4885C0                      test rax, rax
+   114 000000C4 75F5                        jnz hex_count_digits
+   115                                  
+   116                                  hex_print_prepare:
+   117 000000C6 4801CF                      add rdi, rcx
+   118 000000C9 48FFCF                      dec rdi                     ;end of number
+   119 000000CC 51                          push rcx                    ;save rcx in stack
+   120                                  
+   121                                  print_hex:
+   122 000000CD 4889D0                      mov rax, rdx
+   123 000000D0 4883E00F                    and rax, 0xf                ;last symbol
+   124 000000D4 8A98[08010000]              mov bl, [numbers+rax]       ;symbol in bx
+   125 000000DA 881F                        mov [rdi], bl               ;symbol in str
+   126 000000DC 48FFCF                      dec rdi                     ;rdi--
+   127 000000DF 48C1EA04                    shr rdx, 4
+   128 000000E3 E2E8                        loop print_hex
    129                                  
-   130                                  print_hex:
-   131 000000E3 4889D0                      mov rax, rdx
-   132 000000E6 4883E00F                    and rax, 0xf                ;last symbol
-   133 000000EA 8A98[08010000]              mov bl, [numbers+rax]       ;symbol in bx
-   134 000000F0 881F                        mov [rdi], bl               ;symbol in str
-   135 000000F2 48FFCF                      dec rdi                     ;rdi--
-   136 000000F5 48C1EA04                    shr rdx, 4
-   137 000000F9 E2E8                        loop print_hex
-   138                                  
-   139 000000FB 59                          pop rcx
-   140 000000FC 5F                          pop rdi
-   141 000000FD 4883C702                    add rdi, 2
-   142 00000101 4801CF                      add rdi, rcx                ;rdi to the correct place
-   143                                  
-   144 00000104 C3                          ret
-   145                                  ;-------------------------------------------------
-   146                                  ;Tranform number to oct str
-   147                                  ;Entry: rdx  = number
-   148                                  ;       rdi --> place to write
-   149                                  ;Exit: oct number printed in str copy
-   150                                  ;Destr: rax, rcx
-   151                                  ;-------------------------------------------------
-   152                                  oct_to_str:
-   153 00000105 57                          push rdi                    ;save rdi
-   154                                  
-   155 00000106 C60730                      mov byte [rdi], '0'
-   156 00000109 48FFC7                      inc rdi
-   157 0000010C C6076F                      mov byte [rdi], 'o'
-   158 0000010F 48FFC7                      inc rdi                     ;0o at the begin
-   159                                  
-   160 00000112 4889D0                      mov rax, rdx
-   161 00000115 4831C9                      xor rcx, rcx                ;rcx = 0
-   162                                  
-   163 00000118 4885C0                      test rax, rax
-   164 0000011B 7504                        jnz oct_count_digits        ; if not zero
-   165 0000011D B101                        mov cl, 1                   ; if zero need one number
-   166 0000011F EB0B                        jmp oct_print_prepare
-   167                                  
-   168                                  oct_count_digits:
-   169 00000121 FEC1                        inc cl                      ; cl++
-   170 00000123 48C1E803                    shr rax, 3                  ; rax /= 8
-   171 00000127 4885C0                      test rax, rax
-   172 0000012A 75F5                        jnz oct_count_digits
-   173                                  
-   174                                  oct_print_prepare:
-   175 0000012C 4801CF                      add rdi, rcx
-   176 0000012F 48FFCF                      dec rdi                     ;end of number in rdi
-   177 00000132 51                          push rcx                    ;save rcx in stack
+   130 000000E5 59                          pop rcx
+   131 000000E6 5F                          pop rdi
+   132 000000E7 4883C702                    add rdi, 2
+   133 000000EB 4801CF                      add rdi, rcx                ;rdi to the correct place
+   134                                  
+   135 000000EE C3                          ret
+   136                                  ;-------------------------------------------------
+   137                                  ;Tranform number to oct str
+   138                                  ;Entry: rdx  = number
+   139                                  ;       rdi --> place to write
+   140                                  ;Exit: oct number printed in str copy
+   141                                  ;Destr: rax, rcx
+   142                                  ;-------------------------------------------------
+   143                                  oct_to_str:
+   144 000000EF 57                          push rdi                    ;save rdi
+   145                                  
+   146 000000F0 C60730                      mov byte [rdi], '0'
+   147 000000F3 48FFC7                      inc rdi
+   148 000000F6 C6076F                      mov byte [rdi], 'o'
+   149 000000F9 48FFC7                      inc rdi                     ;0o at the begin
+   150                                  
+   151 000000FC 4889D0                      mov rax, rdx
+   152 000000FF 4831C9                      xor rcx, rcx                ;rcx = 0
+   153                                  
+   154 00000102 4885C0                      test rax, rax
+   155 00000105 7504                        jnz oct_count_digits        ; if not zero
+   156 00000107 B101                        mov cl, 1                   ; if zero need one number
+   157 00000109 EB0B                        jmp oct_print_prepare
+   158                                  
+   159                                  oct_count_digits:
+   160 0000010B FEC1                        inc cl                      ; cl++
+   161 0000010D 48C1E803                    shr rax, 3                  ; rax /= 8
+   162 00000111 4885C0                      test rax, rax
+   163 00000114 75F5                        jnz oct_count_digits
+   164                                  
+   165                                  oct_print_prepare:
+   166 00000116 4801CF                      add rdi, rcx
+   167 00000119 48FFCF                      dec rdi                     ;end of number in rdi
+   168 0000011C 51                          push rcx                    ;save rcx in stack
+   169                                  
+   170                                  print_oct:
+   171 0000011D 4889D0                      mov rax, rdx
+   172 00000120 4883E007                    and rax, 7                  ;last symbol
+   173 00000124 8A98[08010000]              mov bl, [numbers+rax]       ;symbol in bl
+   174 0000012A 881F                        mov [rdi], bl               ;symbol in str
+   175 0000012C 48FFCF                      dec rdi
+   176 0000012F 48C1EA03                    shr rdx, 3
+   177 00000133 E2E8                        loop print_oct
    178                                  
-   179                                  print_oct:
-   180 00000133 4889D0                      mov rax, rdx
-   181 00000136 4883E007                    and rax, 7                  ;last symbol
-   182 0000013A 8A98[08010000]              mov bl, [numbers+rax]       ;symbol in bl
-   183 00000140 881F                        mov [rdi], bl               ;symbol in str
-   184 00000142 48FFCF                      dec rdi
-   185 00000145 48C1EA03                    shr rdx, 3
-   186 00000149 E2E8                        loop print_oct
-   187                                  
-   188 0000014B 59                          pop rcx
-   189 0000014C 5F                          pop rdi
-   190 0000014D 4883C702                    add rdi, 2
-   191 00000151 4801CF                      add rdi, rcx                ;correct address in rdi
-   192                                  
-   193 00000154 C3                          ret
-   194                                  
-   195                                  ;-------------------------------------------------
-   196                                  ;Tranform number to bin str
-   197                                  ;Entry: rdx  = number
-   198                                  ;       rdi --> place to write
-   199                                  ;Exit: bin number printed in str copy
-   200                                  ;Destr: rax, rcx
-   201                                  ;-------------------------------------------------
-   202                                  bin_to_str:
-   203 00000155 57                          push rdi                    ;save rdi
-   204                                  
-   205 00000156 C60730                      mov byte [rdi], '0'
-   206 00000159 48FFC7                      inc rdi
-   207 0000015C C60762                      mov byte [rdi], 'b'
-   208 0000015F 48FFC7                      inc rdi                     ;0b at begin
-   209                                  
-   210 00000162 4889D0                      mov rax, rdx
-   211 00000165 4831C9                      xor rcx, rcx                ;rcx = 0
-   212                                  
-   213 00000168 4885C0                      test rax, rax
-   214 0000016B 7504                        jnz bin_count_digits        ; if not zero
-   215 0000016D B101                        mov cl, 1                   ; if zero need one number
-   216 0000016F EB0A                        jmp bin_print_prepare
-   217                                  
-   218                                  bin_count_digits:
-   219 00000171 FEC1                        inc cl                      ; cl++
-   220 00000173 48D1E8                      shr rax, 1                  ; rax /= 8
-   221 00000176 4885C0                      test rax, rax
-   222 00000179 75F6                        jnz bin_count_digits
-   223                                  
-   224                                  bin_print_prepare:
-   225 0000017B 4801CF                      add rdi, rcx
-   226 0000017E 48FFCF                      dec rdi                     ;end of number
-   227 00000181 51                          push rcx                    ;save rcx in stack
+   179 00000135 59                          pop rcx
+   180 00000136 5F                          pop rdi
+   181 00000137 4883C702                    add rdi, 2
+   182 0000013B 4801CF                      add rdi, rcx                ;correct address in rdi
+   183                                  
+   184 0000013E C3                          ret
+   185                                  
+   186                                  ;-------------------------------------------------
+   187                                  ;Tranform number to bin str
+   188                                  ;Entry: rdx  = number
+   189                                  ;       rdi --> place to write
+   190                                  ;Exit: bin number printed in str copy
+   191                                  ;Destr: rax, rcx
+   192                                  ;-------------------------------------------------
+   193                                  bin_to_str:
+   194 0000013F 57                          push rdi                    ;save rdi
+   195                                  
+   196 00000140 C60730                      mov byte [rdi], '0'
+   197 00000143 48FFC7                      inc rdi
+   198 00000146 C60762                      mov byte [rdi], 'b'
+   199 00000149 48FFC7                      inc rdi                     ;0b at begin
+   200                                  
+   201 0000014C 4889D0                      mov rax, rdx
+   202 0000014F 4831C9                      xor rcx, rcx                ;rcx = 0
+   203                                  
+   204 00000152 4885C0                      test rax, rax
+   205 00000155 7504                        jnz bin_count_digits        ; if not zero
+   206 00000157 B101                        mov cl, 1                   ; if zero need one number
+   207 00000159 EB0A                        jmp bin_print_prepare
+   208                                  
+   209                                  bin_count_digits:
+   210 0000015B FEC1                        inc cl                      ; cl++
+   211 0000015D 48D1E8                      shr rax, 1                  ; rax /= 8
+   212 00000160 4885C0                      test rax, rax
+   213 00000163 75F6                        jnz bin_count_digits
+   214                                  
+   215                                  bin_print_prepare:
+   216 00000165 4801CF                      add rdi, rcx
+   217 00000168 48FFCF                      dec rdi                     ;end of number
+   218 0000016B 51                          push rcx                    ;save rcx in stack
+   219                                  
+   220                                  print_bin:
+   221 0000016C 4889D0                      mov rax, rdx
+   222 0000016F 4883E001                    and rax, 0b1                ;last symbol
+   223 00000173 8A98[08010000]              mov bl, [numbers+rax]       ;symbol in bl
+   224 00000179 881F                        mov [rdi], bl               ;symbol in str
+   225 0000017B 48FFCF                      dec rdi
+   226 0000017E 48D1EA                      shr rdx, 1
+   227 00000181 E2E9                        loop print_bin
    228                                  
-   229                                  print_bin:
-   230 00000182 4889D0                      mov rax, rdx
-   231 00000185 4883E001                    and rax, 0b1                ;last symbol
-   232 00000189 8A98[08010000]              mov bl, [numbers+rax]       ;symbol in bl
-   233 0000018F 881F                        mov [rdi], bl               ;symbol in str
-   234 00000191 48FFCF                      dec rdi
-   235 00000194 48D1EA                      shr rdx, 1
-   236 00000197 E2E9                        loop print_bin
-   237                                  
-   238 00000199 59                          pop rcx
-   239 0000019A 5F                          pop rdi
-   240 0000019B 4883C702                    add rdi, 2
-   241 0000019F 4801CF                      add rdi, rcx                ;correct address
-   242                                  
-   243 000001A2 C3                          ret
-   244                                  ;-------------------------------------------------
-   245                                  ;Tranform number to dec str
-   246                                  ;Entry: rdx  = number
-   247                                  ;       rdi --> place to write
-   248                                  ;Exit: dec number printed in str copy
-   249                                  ;Destr: rax, rcx
-   250                                  ;-------------------------------------------------
-   251                                  dec_to_str:
-   252 000001A3 4889D0                      mov rax, rdx
-   253 000001A6 4831C9                      xor rcx, rcx                ;rcx = 0
-   254                                  
-   255 000001A9 B100                        mov cl, 0                   ;counter
+   229 00000183 59                          pop rcx
+   230 00000184 5F                          pop rdi
+   231 00000185 4883C702                    add rdi, 2
+   232 00000189 4801CF                      add rdi, rcx                ;correct address
+   233                                  
+   234 0000018C C3                          ret
+   235                                  ;-------------------------------------------------
+   236                                  ;Tranform number to dec str
+   237                                  ;Entry: rdx  = number
+   238                                  ;       rdi --> place to write
+   239                                  ;Exit: dec number printed in str copy
+   240                                  ;Destr: rax, rcx
+   241                                  ;-------------------------------------------------
+   242                                  dec_to_str:
+   243 0000018D 4889D0                      mov rax, rdx
+   244 00000190 4831C9                      xor rcx, rcx                ;rcx = 0
+   245                                  
+   246 00000193 B100                        mov cl, 0                   ;counter
+   247                                  
+   248                                  dec_count_digits:
+   249 00000195 FEC1                        inc cl                      ; cl++
+   250 00000197 4831D2                      xor rdx, rdx
+   251 0000019A BB0A000000                  mov rbx, 10
+   252 0000019F 48F7F3                      div rbx
+   253 000001A2 52                          push rdx
+   254 000001A3 4885C0                      test rax, rax
+   255 000001A6 75ED                        jnz dec_count_digits
    256                                  
-   257                                  dec_count_digits:
-   258 000001AB FEC1                        inc cl                      ; cl++
-   259 000001AD 4831D2                      xor rdx, rdx
-   260 000001B0 BB0A000000                  mov rbx, 10
-   261 000001B5 48F7F3                      div rbx
-   262 000001B8 52                          push rdx
-   263 000001B9 4885C0                      test rax, rax
-   264 000001BC 75ED                        jnz dec_count_digits
-   265                                  
-   266                                  
-   267                                  print_dec:
-   268 000001BE 58                          pop rax
-   269 000001BF 0430                        add al, '0'
-   270 000001C1 8807                        mov[rdi], al
-   271 000001C3 48FFC7                      inc rdi                     ;rdi++
-   272 000001C6 E2F6                        loop print_dec
-   273                                  
-   274 000001C8 C3                          ret
-   275                                  ;-------------------------------------------------
-   276                                  ;Copy string constant to str
-   277                                  ;Entry: rdx  = str offser
-   278                                  ;       rdi --> place to write
-   279                                  ;Exit: hex number printed in str copy
-   280                                  ;Destr: rax, rcx
-   281                                  ;-------------------------------------------------
-   282                                  str_to_str:
-   283 000001C9 8A0A                        mov cl, [rdx]
-   284 000001CB 84C9                        test cl, cl                 ;if '\0' - finish
-   285 000001CD 740A                        jz end_of_str
-   286 000001CF 880F                        mov [rdi], cl               ;copy one symbol
-   287 000001D1 48FFC7                      inc rdi
-   288 000001D4 48FFC2                      inc rdx                     ;new symbol
-   289 000001D7 EBF0                        jmp str_to_str
-   290                                  end_of_str:
-   291                                  
-   292 000001D9 C3                          ret
-   293                                  ;-------------------------------------------------
-   294                                  ;Error end of programm
-   295                                  ;-------------------------------------------------
-   296                                  error_end:
-   297 000001DA B801000000                  mov rax, 1              ; syscall number
-   298 000001DF BF01000000                  mov rdi, 1              ; stdout
-   299 000001E4 488B1425[B3050000]          mov rdx, [error_str_len]; str len
-   300 000001EC 48BE-                       mov rsi, error_str       ; copy address
-   300 000001EE [3405000000000000] 
-   301 000001F6 0F05                        syscall                 ; print str
+   257                                  
+   258                                  print_dec:
+   259 000001A8 58                          pop rax
+   260 000001A9 0430                        add al, '0'
+   261 000001AB 8807                        mov[rdi], al
+   262 000001AD 48FFC7                      inc rdi                     ;rdi++
+   263 000001B0 E2F6                        loop print_dec
+   264                                  
+   265 000001B2 C3                          ret
+   266                                  ;-------------------------------------------------
+   267                                  ;Copy string constant to str
+   268                                  ;Entry: rdx  = str offser
+   269                                  ;       rdi --> place to write
+   270                                  ;Exit: hex number printed in str copy
+   271                                  ;Destr: rax, rcx
+   272                                  ;-------------------------------------------------
+   273                                  str_to_str:
+   274 000001B3 8A0A                        mov cl, [rdx]
+   275 000001B5 84C9                        test cl, cl                 ;if '\0' - finish
+   276 000001B7 740A                        jz end_of_str
+   277 000001B9 880F                        mov [rdi], cl               ;copy one symbol
+   278 000001BB 48FFC7                      inc rdi
+   279 000001BE 48FFC2                      inc rdx                     ;new symbol
+   280 000001C1 EBF0                        jmp str_to_str
+   281                                  end_of_str:
+   282                                  
+   283 000001C3 C3                          ret
+   284                                  ;-------------------------------------------------
+   285                                  ;Prints and free buffer
+   286                                  ;Entry: str_copy = buffer begin
+   287                                  ;Exit: rdi = buffer begin
+   288                                  ;Destr:
+   289                                  ;-------------------------------------------------
+   290                                  print_and_free_buffer:
+   291 000001C4 56                          push rsi
+   292 000001C5 48BE-                       mov rsi, str_copy       ; copy address
+   292 000001C7 [0800000000000000] 
+   293 000001CF 48BF-                       mov rdi, str_copy       ; copy begin(to cmp symbol abd '\0')
+   293 000001D1 [0800000000000000] 
+   294 000001D9 4831C9                      xor rcx, rcx            ; len counter
+   295                                  
+   296                                  len_calculate:
+   297 000001DC 803F00                      cmp byte [rdi], 0       ; if '\0'
+   298 000001DF 7408                        je print_str
+   299 000001E1 48FFC1                      inc rcx                 ; len counter++
+   300 000001E4 48FFC7                      inc rdi                 ; next symabol
+   301 000001E7 EBF3                        jmp len_calculate
    302                                  
-   303 000001F8 B83C000000                  mov rax, 60
-   304 000001FD 4831FF                      xor rdi, rdi            ; return 0
-   305 00000200 0F05                        syscall                 ; end  of programm
-   306                                  
-   307 00000202 C3                          ret
-   308                                  ;-------------------------------------------------
-   309                                  
-   310                                  section .data
-   311 00000000 0000000000000000            stack_address dq 0
-   312 00000008 00<rep 100h>                str_copy     times 256 db 0                ; буфер для копии строки (64 байта)
-   313 00000108 303132333435363738-         numbers      db '0123456789abcdef'
-   313 00000111 39616263646566     
-   314 00000118 464F52205448452045-         str_const    db 'FOR THE EMPEROR!!!', 0, 0xa
-   314 00000121 4D5045524F52212121-
-   314 0000012A 000A               
-   315 0000012C [DA01000000000000]-         jmp_table   times 'b' dq error_end
-   315 0000012C <rep 62h>          
-   316 0000043C [9800000000000000]                      dq binar
-   317 00000444 [8A00000000000000]                      dq char
-   318 0000044C [A600000000000000]                      dq decimal
-   319 00000454 [DA01000000000000]-                     times ('o' - 'd' - 1) dq error_end
-   319 00000454 <rep Ah>           
-   320 000004A4 [9F00000000000000]                      dq octal
-   321 000004AC [DA01000000000000]-                     times ('s' - 'o' - 1) dq error_end
-   321 000004AC <rep 3h>           
-   322 000004C4 [AD00000000000000]                      dq string
-   323 000004CC [DA01000000000000]-                     times ('x' - 's' - 1) dq error_end
-   323 000004CC <rep 4h>           
-   324 000004EC [9100000000000000]                      dq hexadecimal
-   325 000004F4 [DA01000000000000]-                     times (128 - 'x') dq error_end
-   325 000004F4 <rep 8h>           
-   326 00000534 202020202023232320-         error_str    db '     ###     ', 0xa,
-   326 0000053D 202020200A         
-   327 00000542 202020202323232323-                      db '    #####    ', 0xa,
-   327 0000054B 202020200A         
-   328 00000550 202020202323232323-                      db '    #####    ', 0xa,
-   328 00000559 202020200A         
-   329 0000055E 202020202323232323-                      db '    #####    ', 0xa,
-   329 00000567 202020200A         
-   330 0000056C 202020202323232323-                      db '    #####    ', 0xa,
-   330 00000575 202020200A         
-   331 0000057A 202020202323232323-                      db '    #####    ', 0xa,
-   331 00000583 202020200A         
-   332 00000588 202323202323232323-                      db ' ## ##### ## ', 0xa,
-   332 00000591 202323200A         
-   333 00000596 232323232323232323-                      db '#############', 0xa,
-   333 0000059F 232323230A         
-   334 000005A4 202323232020202020-                      db ' ###     ### ', 0xa, 0
-   334 000005AD 232323200A00       
-   335 000005B3 7F                          error_str_len db error_str_len - error_str
-   336                                  
-   337                                  section .note.GNU-stack noalloc noexec nowrite progbits
+   303                                  print_str:
+   304 000001E9 B801000000                  mov rax, 1              ; syscall number
+   305 000001EE BF01000000                  mov rdi, 1              ; stdout
+   306 000001F3 4889CA                      mov rdx, rcx            ; str len
+   307 000001F6 0F05                        syscall                 ; print str
+   308                                  
+   309 000001F8 B900010000                  mov rcx, 256
+   310 000001FD 48BF-                       mov rdi, str_copy
+   310 000001FF [0800000000000000] 
+   311                                  
+   312                                  free_buffer:
+   313                                  
+   314 00000207 C60700                      mov byte [rdi], 0
+   315 0000020A 48FFC7                      inc rdi
+   316 0000020D E2F8                        loop free_buffer
+   317                                  
+   318 0000020F 48BF-                       mov rdi, str_copy
+   318 00000211 [0800000000000000] 
+   319 00000219 5E                          pop rsi
+   320                                  
+   321 0000021A C3                          ret
+   322                                  ;-------------------------------------------------
+   323                                  ;Error end of programm
+   324                                  ;-------------------------------------------------
+   325                                  error_end:
+   326 0000021B B801000000                  mov rax, 1              ; syscall number
+   327 00000220 BF01000000                  mov rdi, 1              ; stdout
+   328 00000225 488B1425[B3050000]          mov rdx, [error_str_len]; str len
+   329 0000022D 48BE-                       mov rsi, error_str       ; copy address
+   329 0000022F [3405000000000000] 
+   330 00000237 0F05                        syscall                 ; print str
+   331                                  
+   332 00000239 B83C000000                  mov rax, 60
+   333 0000023E 4831FF                      xor rdi, rdi            ; return 0
+   334 00000241 0F05                        syscall                 ; end  of programm
+   335                                  
+   336 00000243 C3                          ret
+   337                                  ;-------------------------------------------------
+   338                                  
+   339                                  section .data
+   340 00000000 0000000000000000            stack_address dq 0
+   341 00000008 00<rep 100h>                str_copy     times 256 db 0                ; буфер для копии строки (64 байта)
+   342 00000108 303132333435363738-         numbers      db '0123456789abcdef'
+   342 00000111 39616263646566     
+   343 00000118 464F52205448452045-         str_const    db 'FOR THE EMPEROR!!!', 0, 0xa
+   343 00000121 4D5045524F52212121-
+   343 0000012A 000A               
+   344 0000012C [1B02000000000000]-         jmp_table   times 'b' dq error_end
+   344 0000012C <rep 62h>          
+   345 0000043C [8200000000000000]                      dq binar
+   346 00000444 [7400000000000000]                      dq char
+   347 0000044C [9000000000000000]                      dq decimal
+   348 00000454 [1B02000000000000]-                     times ('o' - 'd' - 1) dq error_end
+   348 00000454 <rep Ah>           
+   349 000004A4 [8900000000000000]                      dq octal
+   350 000004AC [1B02000000000000]-                     times ('s' - 'o' - 1) dq error_end
+   350 000004AC <rep 3h>           
+   351 000004C4 [9700000000000000]                      dq string
+   352 000004CC [1B02000000000000]-                     times ('x' - 's' - 1) dq error_end
+   352 000004CC <rep 4h>           
+   353 000004EC [7B00000000000000]                      dq hexadecimal
+   354 000004F4 [1B02000000000000]-                     times (128 - 'x') dq error_end
+   354 000004F4 <rep 8h>           
+   355 00000534 202020202023232320-         error_str    db '     ###     ', 0xa,
+   355 0000053D 202020200A         
+   356 00000542 202020202323232323-                      db '    #####    ', 0xa,
+   356 0000054B 202020200A         
+   357 00000550 202020202323232323-                      db '    #####    ', 0xa,
+   357 00000559 202020200A         
+   358 0000055E 202020202323232323-                      db '    #####    ', 0xa,
+   358 00000567 202020200A         
+   359 0000056C 202020202323232323-                      db '    #####    ', 0xa,
+   359 00000575 202020200A         
+   360 0000057A 202020202323232323-                      db '    #####    ', 0xa,
+   360 00000583 202020200A         
+   361 00000588 202323202323232323-                      db ' ## ##### ## ', 0xa,
+   361 00000591 202323200A         
+   362 00000596 232323232323232323-                      db '#############', 0xa,
+   362 0000059F 232323230A         
+   363 000005A4 202323232020202020-                      db ' ###     ### ', 0xa, 0
+   363 000005AD 232323200A00       
+   364 000005B3 7F                          error_str_len db $ - error_str
+   365                                  
+   366                                  section .note.GNU-stack noalloc noexec nowrite progbits

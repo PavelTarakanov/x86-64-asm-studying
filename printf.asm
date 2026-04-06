@@ -32,6 +32,12 @@ common_symbol:
     mov [rdi], al           ; copy one symbol
     inc rdi                 ; rdi++
 
+    cmp rdi, (str_copy + 256 - 66)
+    jb if_end
+
+    call print_and_free_buffer
+    mov rdi, str_copy
+
 if_end:
     test al, al             ; if '\0'
     jz copy_done
@@ -40,22 +46,7 @@ if_end:
     jmp copy_str
 
 copy_done:
-    mov rsi, str_copy       ; copy address
-    mov rdi, str_copy       ; copy begin(to cmp symbol abd '\0')
-    xor rcx, rcx            ; len counter
-
-len_calculate:
-    cmp byte [rdi], 0       ; if '\0'
-    je print_str
-    inc rcx                 ; len counter++
-    inc rdi                 ; next symabol
-    jmp len_calculate
-
-print_str:
-    mov rax, 1              ; syscall number
-    mov rdi, 1              ; stdout
-    mov rdx, rcx            ; str len
-    syscall                 ; print str
+    call print_and_free_buffer
 
     mov rsp, [stack_address]
     push r15
@@ -291,6 +282,44 @@ end_of_str:
 
     ret
 ;-------------------------------------------------
+;Prints and free buffer
+;Entry: str_copy = buffer begin
+;Exit: rdi = buffer begin
+;Destr:
+;-------------------------------------------------
+print_and_free_buffer:
+    push rsi
+    mov rsi, str_copy       ; copy address
+    mov rdi, str_copy       ; copy begin(to cmp symbol abd '\0')
+    xor rcx, rcx            ; len counter
+
+len_calculate:
+    cmp byte [rdi], 0       ; if '\0'
+    je print_str
+    inc rcx                 ; len counter++
+    inc rdi                 ; next symabol
+    jmp len_calculate
+
+print_str:
+    mov rax, 1              ; syscall number
+    mov rdi, 1              ; stdout
+    mov rdx, rcx            ; str len
+    syscall                 ; print str
+
+    mov rcx, 256
+    mov rdi, str_copy
+
+free_buffer:
+
+    mov byte [rdi], 0
+    inc rdi
+    loop free_buffer
+
+    mov rdi, str_copy
+    pop rsi
+
+    ret
+;-------------------------------------------------
 ;Error end of programm
 ;-------------------------------------------------
 error_end:
@@ -332,6 +361,6 @@ section .data
                  db ' ## ##### ## ', 0xa,
                  db '#############', 0xa,
                  db ' ###     ### ', 0xa, 0
-    error_str_len db error_str_len - error_str
+    error_str_len db $ - error_str
 
 section .note.GNU-stack noalloc noexec nowrite progbits

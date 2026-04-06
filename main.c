@@ -3,12 +3,13 @@
 
 extern void my_print(const char*, ...);
 
-int main() {
+int main()
+{
     printf("\n>>> main(): start\n\n");
 
-    char *my_str = "dfsdf";
+    char *my_str = "dfsdfbbbbasjdbkaj";
 
-    my_print("Hello %s %d %d %d %d %d %d world!\n", my_str, 14, 15, 16, 17, 18, 19);
+    my_print("Hello world!a jhfvlbvhdkjcnasjsjdhsjdbshbdfhjsbdfhbsdfhjkbsdmfbsdjkhfbksdbfjhksdbf,sdbfbsdfjbsdlhjvaosiulbvddbhddsklfnsdnf.aksdnflasdf,ajksdbfljhsakbdf.,jsdbflkjsabdfjasdbfalidfb,jassdfsndflknsdfjnafdnkajnfkadlnjas.fakdsfjsndlfkakfjnbksdfbnakdjbfkladbfsadfsndf.avsdjvfsjdfvjkavfjhsdvfjhasvdfjhvasdjhfvsajdhfvjhasdvfjhsvadfjhvasdjfvasjkfvkajdfvkjasdvfkasjdhfvksajdfksfdndfvosdagfw\n");
 
     printf("\n<<< main(): end\n\n");
     return 0;
