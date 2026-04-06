@@ -67,13 +67,16 @@ char:
     inc rdi
     jmp specifier_handler_end
 hexadecimal:
-    call hex_to_str
+    mov cl, 4
+    call two_degs_to_str
     jmp specifier_handler_end
 binar:
-    call bin_to_str
+    mov cl, 1
+    call two_degs_to_str
     jmp specifier_handler_end
 octal:
-    call oct_to_str
+    mov cl, 3
+    call two_degs_to_str
     jmp specifier_handler_end
 decimal:
     call dec_to_str
@@ -85,13 +88,14 @@ string:
 specifier_handler_end:
     ret
 ;-------------------------------------------------
-;Tranform number to hex str
+;Tranform number to str
 ;Entry: rdx  = number
 ;       rdi --> place to write
+;       cl   = two degree
 ;Exit: hex number printed in str copy
 ;Destr: rax, rcx
 ;-------------------------------------------------
-hex_to_str:
+two_degs_to_str:
     push rdi
 
     mov byte [rdi], '0'
@@ -99,137 +103,44 @@ hex_to_str:
     mov byte [rdi], 'x'
     inc rdi                     ;0x at the begin
 
+    mov r9, 1
+    shl r9, cl
+    dec r9
+
     mov rax, rdx                ;save number
-    xor rcx, rcx                ;rcx - counter
+    xor r8, r8                  ;r8 - counter
 
     test rax, rax
-    jnz hex_count_digits        ; if not zero
-    mov cl, 1                   ; if zero need one number
-    jmp hex_print_prepare
+    jnz two_degs_count_digits   ; if not zero
+    mov r8, 1                   ; if zero need one number
+    jmp two_degs_print_prepare
 
-hex_count_digits:
-    inc cl                      ; cl++
-    shr rax, 4                  ; rax /= 16
+two_degs_count_digits:
+    inc r8                      ; r8++
+    shr rax, cl                 ; rax /= 2^cl
     test rax, rax
-    jnz hex_count_digits
+    jnz two_degs_count_digits
 
-hex_print_prepare:
-    add rdi, rcx
+two_degs_print_prepare:
+    add rdi, r8
     dec rdi                     ;end of number
-    push rcx                    ;save rcx in stack
+    push r8                     ;save r8 in stack
 
-print_hex:
+print_two_degs:
     mov rax, rdx
-    and rax, 0xf                ;last symbol
+    and rax, r9                 ;last symbol
     mov bl, [numbers+rax]       ;symbol in bx
     mov [rdi], bl               ;symbol in str
     dec rdi                     ;rdi--
-    shr rdx, 4
-    loop print_hex
+    shr rdx, cl
+    dec r8                      ;r8--
+    cmp r8, 0
+    ja print_two_degs
 
-    pop rcx
+    pop r8
     pop rdi
     add rdi, 2
-    add rdi, rcx                ;rdi to the correct place
-
-    ret
-;-------------------------------------------------
-;Tranform number to oct str
-;Entry: rdx  = number
-;       rdi --> place to write
-;Exit: oct number printed in str copy
-;Destr: rax, rcx
-;-------------------------------------------------
-oct_to_str:
-    push rdi                    ;save rdi
-
-    mov byte [rdi], '0'
-    inc rdi
-    mov byte [rdi], 'o'
-    inc rdi                     ;0o at the begin
-
-    mov rax, rdx
-    xor rcx, rcx                ;rcx = 0
-
-    test rax, rax
-    jnz oct_count_digits        ; if not zero
-    mov cl, 1                   ; if zero need one number
-    jmp oct_print_prepare
-
-oct_count_digits:
-    inc cl                      ; cl++
-    shr rax, 3                  ; rax /= 8
-    test rax, rax
-    jnz oct_count_digits
-
-oct_print_prepare:
-    add rdi, rcx
-    dec rdi                     ;end of number in rdi
-    push rcx                    ;save rcx in stack
-
-print_oct:
-    mov rax, rdx
-    and rax, 7                  ;last symbol
-    mov bl, [numbers+rax]       ;symbol in bl
-    mov [rdi], bl               ;symbol in str
-    dec rdi
-    shr rdx, 3
-    loop print_oct
-
-    pop rcx
-    pop rdi
-    add rdi, 2
-    add rdi, rcx                ;correct address in rdi
-
-    ret
-
-;-------------------------------------------------
-;Tranform number to bin str
-;Entry: rdx  = number
-;       rdi --> place to write
-;Exit: bin number printed in str copy
-;Destr: rax, rcx
-;-------------------------------------------------
-bin_to_str:
-    push rdi                    ;save rdi
-
-    mov byte [rdi], '0'
-    inc rdi
-    mov byte [rdi], 'b'
-    inc rdi                     ;0b at begin
-
-    mov rax, rdx
-    xor rcx, rcx                ;rcx = 0
-
-    test rax, rax
-    jnz bin_count_digits        ; if not zero
-    mov cl, 1                   ; if zero need one number
-    jmp bin_print_prepare
-
-bin_count_digits:
-    inc cl                      ; cl++
-    shr rax, 1                  ; rax /= 8
-    test rax, rax
-    jnz bin_count_digits
-
-bin_print_prepare:
-    add rdi, rcx
-    dec rdi                     ;end of number
-    push rcx                    ;save rcx in stack
-
-print_bin:
-    mov rax, rdx
-    and rax, 0b1                ;last symbol
-    mov bl, [numbers+rax]       ;symbol in bl
-    mov [rdi], bl               ;symbol in str
-    dec rdi
-    shr rdx, 1
-    loop print_bin
-
-    pop rcx
-    pop rdi
-    add rdi, 2
-    add rdi, rcx                ;correct address
+    add rdi, r8                ;rdi to the correct place
 
     ret
 ;-------------------------------------------------
@@ -265,18 +176,25 @@ print_dec:
     ret
 ;-------------------------------------------------
 ;Copy string constant to str
-;Entry: rdx  = str offser
+;Entry: rdx  = str offset
 ;       rdi --> place to write
 ;Exit: hex number printed in str copy
-;Destr: rax, rcx
+;Destr: rcx
 ;-------------------------------------------------
 str_to_str:
+
     mov cl, [rdx]
     test cl, cl                 ;if '\0' - finish
     jz end_of_str
+
     mov [rdi], cl               ;copy one symbol
     inc rdi
     inc rdx                     ;new symbol
+
+    cmp rdi, (str_copy + 256 - 66)
+    jb str_to_str
+
+    call print_and_free_buffer
     jmp str_to_str
 end_of_str:
 

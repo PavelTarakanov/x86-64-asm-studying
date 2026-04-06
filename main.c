@@ -7,9 +7,9 @@ int main()
 {
     printf("\n>>> main(): start\n\n");
 
-    char *my_str = "dfsdfbbbbasjdbkaj";
+    char *my_str = "dfsdfbb";
 
-    my_print("Hello world!a jhfvlbvhdkjcnasjsjdhsjdbshbdfhjsbdfhbsdfhjkbsdmfbsdjkhfbksdbfjhksdbf,sdbfbsdfjbsdlhjvaosiulbvddbhddsklfnsdnf.aksdnflasdf,ajksdbfljhsakbdf.,jsdbflkjsabdfjasdbfalidfb,jassdfsndflknsdfjnafdnkajnfkadlnjas.fakdsfjsndlfkakfjnbksdfbnakdjbfkladbfsadfsndf.avsdjvfsjdfvjkavfjhsdvfjhasvdfjhvasdjhfvsajdhfvjhasdvfjhsvadfjhvasdjfvasjkfvkajdfvkjasdvfkasjdhfvksajdfksfdndfvosdagfw\n");
+    my_print("Hello world!%b\n", 0b10101010100011);
 
     printf("\n<<< main(): end\n\n");
     return 0;
