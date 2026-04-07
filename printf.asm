@@ -5,15 +5,15 @@ global my_print
 my_print:
     mov [stack_address], rsp
     pop r15
+
     push r9
     push r8
     push rcx
     push rdx
-    push rsi
-
+    push rsi                ;save arguments in stack
 
     mov rsi, rdi            ; original str address
-    mov rdi, str_copy       ; copy address
+    lea rdi, str_copy       ; copy address
 
 copy_str:
     xor al, al
@@ -32,11 +32,12 @@ common_symbol:
     mov [rdi], al           ; copy one symbol
     inc rdi                 ; rdi++
 
-    cmp rdi, (str_copy + 256 - 66)
+    lea rdi, str_copy
+    add rdi, 512 - 66
     jb if_end
 
     call print_and_free_buffer
-    mov rdi, str_copy
+    lea rdi, str_copy
 
 if_end:
     test al, al             ; if '\0'
@@ -60,10 +61,18 @@ copy_done:
 ;-------------------------------------------------
 specifier_handler:
     lea rbx, [jmp_table]
+    movzx rax, al
     jmp [rbx + rax * 8]
 
 char:
     mov [rdi], dl
+    inc rdi
+    jmp specifier_handler_end
+percent:
+    pop r10
+    push rdx
+    push r10                    ;return arg in stack
+    mov byte [rdi], '%'
     inc rdi
     jmp specifier_handler_end
 hexadecimal:
@@ -152,6 +161,14 @@ print_two_degs:
 ;-------------------------------------------------
 dec_to_str:
     mov rax, rdx
+    cmp eax, 0
+    jg pozitive
+    not eax
+    inc eax
+    mov byte [rdi], '-'
+    inc rdi
+pozitive:
+
     xor rcx, rcx                ;rcx = 0
 
     mov cl, 0                   ;counter
@@ -164,7 +181,6 @@ dec_count_digits:
     push rdx
     test rax, rax
     jnz dec_count_digits
-
 
 print_dec:
     pop rax
@@ -256,10 +272,12 @@ error_end:
 
 section .data
     stack_address dq 0
-    str_copy     times 256 db 0                ; буфер для копии строки (64 байта)
+    str_copy     times 512 db 0                ; буфер для копии строки (64 байта)
     numbers      db '0123456789abcdef'
     str_const    db 'FOR THE EMPEROR!!!', 0, 0xa
-    jmp_table   times 'b' dq error_end
+    jmp_table   times '%' dq error_end
+                dq percent
+                times ('b'-'%'-1) dq error_end
                 dq binar
                 dq char
                 dq decimal
